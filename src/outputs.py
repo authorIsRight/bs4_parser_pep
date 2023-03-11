@@ -1,10 +1,12 @@
 # outputs.py
-from prettytable import PrettyTable
+import csv
 import datetime as dt
 import logging
+
+from prettytable import PrettyTable
+
 # Дополнительно импортируйте формат даты-времени.
 from constants import BASE_DIR, DATETIME_FORMAT
-import csv
 
 
 def control_output(results, cli_args):
