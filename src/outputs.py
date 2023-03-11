@@ -6,6 +6,7 @@ import logging
 from constants import BASE_DIR, DATETIME_FORMAT
 import csv
 
+
 def control_output(results, cli_args):
     # Чтобы не обращаться дважды к атрибуту объекта в условиях if, elif,
     # сохраним значение в переменную.
@@ -20,10 +21,12 @@ def control_output(results, cli_args):
         # Вывод данных по умолчанию — в терминал построчно.
         default_output(results)
 
+
 def default_output(results):
     # Печатаем список results построчно.
     for row in results:
-        print(*row)    
+        print(*row)
+
 
 def pretty_output(results):
     # Инициализируем объект PrettyTable.
@@ -47,11 +50,11 @@ def file_output(results, cli_args):
     file_name = f'{parser_mode}_{now_formatted}.csv'
     file_path = results_dir / file_name
     # Отсюда начинается новый код.
-    # Через контекстный менеджер открываем файл по сформированному ранее пути 
+    # Через контекстный менеджер открываем файл по сформированному ранее пути
     # в режиме записи 'w', в нужной кодировке utf-8.
     with open(file_path, 'w', encoding='utf-8') as f:
         # Создаём «объект записи» writer.
         writer = csv.writer(f, dialect='unix')
         # Передаём в метод writerows список с результатами парсинга.
         writer.writerows(results)
-    logging.info(f'Файл с результатами был сохранён: {file_path}') 
+    logging.info(f'Файл с результатами был сохранён: {file_path}')

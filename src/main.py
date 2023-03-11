@@ -44,7 +44,8 @@ def whats_new(session):
         soup = BeautifulSoup(response.text, features='lxml') 
         #h1 = soup.find('h1')
         h1 = find_tag(soup, 'h1')        
-        dl = soup.find('dl')  
+        #dl = soup.find('dl')  
+        dl = find_tag(soup, 'dl')        
         dl_text = dl.text.replace('\n', ' ')
         results.append((version_link, h1.text, dl_text))
 
@@ -59,7 +60,7 @@ def latest_versions(session):
     if response is None:
         return
     soup = BeautifulSoup(response.text, features='lxml')
-    sidebar = soup.find('div', {'class': 'sphinxsidebarwrapper'})
+    sidebar = find_tag(soup, 'div', attrs={'class': 'sphinxsidebarwrapper'})
     ul_tags = sidebar.find_all('ul')
 
     for ul in ul_tags:
@@ -93,9 +94,10 @@ def download(session):
     if response is None:
         return
     soup = BeautifulSoup(response.text, features='lxml')
-    main_tag = soup.find('div', {'role': 'main'})
-    table_tag = main_tag.find('table', {'class': 'docutils'})     
-    pdf_a4_tag = table_tag.find('a', {'href': re.compile(r'.+pdf-a4\.zip$')}) 
+    main_tag = find_tag(soup, 'div', {'role': 'main'})
+    table_tag = find_tag(main_tag, 'table', {'class': 'docutils'})
+    pdf_a4_tag = find_tag(table_tag, 'a',
+                          {'href': re.compile(r'.+pdf-a4\.zip$')})
     pdf_a4_link = pdf_a4_tag['href']
     archive_url = urljoin(downloads_url, pdf_a4_link) 
     filename = archive_url.split('/')[-1] 
@@ -108,10 +110,16 @@ def download(session):
         file.write(response.content)     
     logging.info(f'Архив был загружен и сохранён: {archive_path}') 
 
+
+def pep():
+    pass
+
+
 MODE_TO_FUNCTION = {
     'whats-new': whats_new,
     'latest-versions': latest_versions,
     'download': download,
+    'pep': pep,
 }
 
 def main():    
@@ -143,7 +151,8 @@ def main():
         # передаём их в функцию вывода вместе с аргументами командной строки.
         control_output(results, args)
     # Логируем завершение работы парсера.
-    logging.info('Парсер завершил работу.') 
+    logging.info('Парсер завершил работу.')
+
 
 if __name__ == '__main__':
-    main()         
+    main()

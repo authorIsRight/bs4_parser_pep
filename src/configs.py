@@ -33,12 +33,12 @@ def configure_argument_parser(available_modes):
         choices=('pretty', 'file'),
         help='Дополнительные способы вывода данных'
     )
-    return parser 
+    return parser
 
 # Добавьте новую функцию и напишите нужные команды.
 def configure_logging():
     # Сформируйте путь до директории logs.
-    log_dir = BASE_DIR/ 'logs'
+    log_dir = BASE_DIR / 'logs'
     # Создайте директорию.
     log_dir.mkdir(exist_ok=True)
     # Отсюда начинается новый код!
@@ -59,4 +59,4 @@ def configure_logging():
         level=logging.INFO,
         # Вывод логов в терминал.
         handlers=(rotating_handler, logging.StreamHandler())
-    )     
+    )
