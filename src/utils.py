@@ -1,15 +1,11 @@
-# utils.py
 import logging
-
-# Импорт базового класса ошибок библиотеки request.
 from requests import RequestException
-
 from exceptions import ParserFindTagException
 
-# Перехват ошибки RequestException.
+
 def get_response(session, url):
     try:
-        response = session.get(url) 
+        response = session.get(url)
         response.encoding = 'utf-8'
         return response
     except RequestException:
@@ -18,7 +14,7 @@ def get_response(session, url):
             stack_info=True
         )
 
-# Перехват ошибки поиска тегов.
+
 def find_tag(soup, tag, attrs=None):
     searched_tag = soup.find(tag, attrs=(attrs or {}))
     if searched_tag is None:

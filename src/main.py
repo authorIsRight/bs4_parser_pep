@@ -1,4 +1,3 @@
-# main.py
 import re
 from urllib.parse import urljoin
 import logging
@@ -8,54 +7,40 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from utils import get_response, find_tag
-from constants import BASE_DIR, MAIN_DOC_URL 
+from constants import BASE_DIR, MAIN_DOC_URL, PEP_URL, EXPECTED_STATUS
 from configs import configure_argument_parser, configure_logging
 from outputs import control_output
 
+
 def whats_new(session):
     whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
-    # response = session.get(whats_new_url)
-    # response.encoding = 'utf-8'
     response = get_response(session, whats_new_url)
     if response is None:
-        # Если основная страница не загрузится, программа закончит работу.
         return
     soup = BeautifulSoup(response.text, features='lxml')
-    #main_div = soup.find('section', attrs={'id': 'what-s-new-in-python'})    
     main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
-    #div_with_ul = main_div.find('div', attrs={'class': 'toctree-wrapper'})   
-    div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})     
-    sections_by_python = div_with_ul.find_all('li', attrs={'class': 'toctree-l1'})
+    div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
+    sections_by_python = div_with_ul.find_all(
+        'li', attrs={'class': 'toctree-l1'})
 
-    # Добавьте в пустой список заголовки таблицы. 
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, автор')]
     for section in tqdm(sections_by_python):
         version_a_tag = section.find('a')
         href = version_a_tag['href']
         version_link = urljoin(whats_new_url, href)
-        # Замените код загрузки страницы и установки кодировки 
-        # на вызов функции get_response().
-        # response = session.get(version_link)
-        # response.encoding = 'utf-8'
         response = get_response(session, version_link)
         if response is None:
-            # Если страница не загрузится, программа перейдёт к следующей ссылке.
-            continue  
-        soup = BeautifulSoup(response.text, features='lxml') 
-        #h1 = soup.find('h1')
-        h1 = find_tag(soup, 'h1')        
-        #dl = soup.find('dl')  
-        dl = find_tag(soup, 'dl')        
+            continue
+        soup = BeautifulSoup(response.text, features='lxml')
+        h1 = find_tag(soup, 'h1')
+        dl = find_tag(soup, 'dl')
         dl_text = dl.text.replace('\n', ' ')
         results.append((version_link, h1.text, dl_text))
 
-#    for row in results:
-#        print(*row) 
     return results
 
+
 def latest_versions(session):
-    # response = session.get(MAIN_DOC_URL)
-    # response.encoding = 'utf-8'
     response = get_response(session, MAIN_DOC_URL)
     if response is None:
         return
@@ -70,7 +55,6 @@ def latest_versions(session):
         else:
             raise Exception('Ничего не нашлось')
 
-    # Добавьте в пустой список заголовки таблицы. 
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, автор')]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
 
@@ -78,18 +62,15 @@ def latest_versions(session):
         link = a_tag['href']
         text_match = re.search(pattern, a_tag.text)
         if text_match is not None:
-            version, status = text_match.groups()       
+            version, status = text_match.groups()
         else:
             version, status = a_tag.text, ''
         results.append((link, version, status))
-#    for row in results:
-#        print(*row)     
     return results
+
 
 def download(session):
     downloads_url = urljoin(MAIN_DOC_URL, 'download.html')
-    # response = session.get(downloads_url)
-    # response.encoding = 'utf-8'
     response = get_response(session, downloads_url)
     if response is None:
         return
@@ -99,20 +80,64 @@ def download(session):
     pdf_a4_tag = find_tag(table_tag, 'a',
                           {'href': re.compile(r'.+pdf-a4\.zip$')})
     pdf_a4_link = pdf_a4_tag['href']
-    archive_url = urljoin(downloads_url, pdf_a4_link) 
-    filename = archive_url.split('/')[-1] 
+    archive_url = urljoin(downloads_url, pdf_a4_link)
+    filename = archive_url.split('/')[-1]
     print(archive_url)
     downloads_dir = BASE_DIR / 'downloads'
     downloads_dir.mkdir(exist_ok=True)
-    archive_path = downloads_dir / filename 
+    archive_path = downloads_dir / filename
     response = session.get(archive_url)
     with open(archive_path, 'wb') as file:
-        file.write(response.content)     
-    logging.info(f'Архив был загружен и сохранён: {archive_path}') 
+        file.write(response.content)
+    logging.info(f'Архив был загружен и сохранён: {archive_path}')
 
 
-def pep():
-    pass
+def pep(session):
+    response = get_response(session, PEP_URL)
+    if response is None:
+        return
+    soup = BeautifulSoup(response.text, features='lxml')
+
+    results = [('Статус', 'Количество')]
+
+    section_tag = find_tag(soup, 'section', attrs={'id': 'numerical-index'})
+    tbody_tag = find_tag(section_tag, 'tbody')
+    tr_tags = tbody_tag.find_all('tr')
+    statuses = {}
+    total_peps = 0
+
+    results = [('Статус', 'Количество')]
+
+    for n in tqdm(tr_tags):
+        total_peps += 1
+        data = list(find_tag(n, 'abbr').text)
+        status_abbr = data[1:][0] if len(data) > 1 else ''
+        url = urljoin(PEP_URL, find_tag(n, 'a', attrs={
+            'class': 'pep reference internal'})['href'])
+        response = get_response(session, url)
+        if response is None:
+            return
+        soup = BeautifulSoup(response.text, features='lxml')
+
+        pep_info = find_tag(soup, 'dl',
+                            attrs={'class': 'rfc2822 field-list simple'})
+        status_pep_page = pep_info.find(
+            string='Status').parent.find_next_sibling('dd').string
+        if status_pep_page in statuses:
+            statuses[status_pep_page] += 1
+        if status_pep_page not in statuses:
+            statuses[status_pep_page] = 1
+        if status_pep_page not in EXPECTED_STATUS[status_abbr]:
+            error_message = (f'\nНесовпадающие статусы:\n'
+                             f'{url}\n'
+                             f'Статус в карточке: {status_pep_page}\n'
+                             f'Ожидаемые статусы: '
+                             f'{EXPECTED_STATUS[status_abbr]}')
+            logging.warning(error_message)
+    for status in statuses:
+        results.append((status, statuses[status]))
+    results.append(('Total', total_peps))
+    return results
 
 
 MODE_TO_FUNCTION = {
@@ -122,35 +147,23 @@ MODE_TO_FUNCTION = {
     'pep': pep,
 }
 
-def main():    
-    # Запускаем функцию с конфигурацией логов.
+
+def main():
     configure_logging()
-    # Отмечаем в логах момент запуска программы.
     logging.info('Парсер запущен!')
 
-    # Конфигурация парсера аргументов командной строки —
-    # передача в функцию допустимых вариантов выбора.
     arg_parser = configure_argument_parser(MODE_TO_FUNCTION.keys())
-    # Считывание аргументов из командной строки.
     args = arg_parser.parse_args()
-    # Получение из аргументов командной строки нужного режима работы.
-    # Логируем переданные аргументы командной строки.
-    logging.info(f'Аргументы командной строки: {args}')    
+    logging.info(f'Аргументы командной строки: {args}')
     session = requests_cache.CachedSession()
     if args.clear_cache:
         session.cache.clear()
 
-
-
     parser_mode = args.mode
-    # Поиск и вызов нужной функции по ключу словаря.
     results = MODE_TO_FUNCTION[parser_mode](session)
 
-    # Если из функции вернулись какие-то результаты,
     if results is not None:
-        # передаём их в функцию вывода вместе с аргументами командной строки.
         control_output(results, args)
-    # Логируем завершение работы парсера.
     logging.info('Парсер завершил работу.')
 
 
