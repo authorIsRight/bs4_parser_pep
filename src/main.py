@@ -126,15 +126,14 @@ def pep(session):
 
         try:
             if status_pep_page not in EXPECTED_STATUS[status_abbr]:
-                error_message = (f'\nНесовпадающие статусы:\n'
-                                 f'{url}\n'
-                                 f'Статус в карточке: {status_pep_page}\n'
-                                 f'Ожидаемые статусы: '
-                                 f'{EXPECTED_STATUS[status_abbr]}')
-                logging.warning(error_message)
                 raise KeyError('Статус не найден в ожидаемых статусах')
         except KeyError as e:
-            print(f"Произошла ошибка: {e}")
+            error_message = (f'\nНесовпадающие статусы:\n'
+                                f'{url}\n'
+                                f'Статус в карточке: {status_pep_page}\n'
+                                f'Ожидаемые статусы: '
+                                f'{EXPECTED_STATUS[status_abbr]}')
+            logging.warning(error_message)
     results.extend(statuses.items())
     results.append(('Total', total_peps))
     return results
