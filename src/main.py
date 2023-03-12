@@ -98,8 +98,6 @@ def pep(session):
         return
     soup = BeautifulSoup(response.text, features='lxml')
 
-    results = [('Статус', 'Количество')]
-
     section_tag = find_tag(soup, 'section', attrs={'id': 'numerical-index'})
     tbody_tag = find_tag(section_tag, 'tbody')
     tr_tags = tbody_tag.find_all('tr')
@@ -108,11 +106,11 @@ def pep(session):
 
     results = [('Статус', 'Количество')]
 
-    for n in tqdm(tr_tags):
+    for tr_tag in tqdm(tr_tags):
         total_peps += 1
-        data = list(find_tag(n, 'abbr').text)
+        data = list(find_tag(tr_tag, 'abbr').text)
         status_abbr = data[1:][0] if len(data) > 1 else ''
-        url = urljoin(PEP_URL, find_tag(n, 'a', attrs={
+        url = urljoin(PEP_URL, find_tag(tr_tag, 'a', attrs={
             'class': 'pep reference internal'})['href'])
         response = get_response(session, url)
         if response is None:
@@ -123,19 +121,21 @@ def pep(session):
                             attrs={'class': 'rfc2822 field-list simple'})
         status_pep_page = pep_info.find(
             string='Status').parent.find_next_sibling('dd').string
-        if status_pep_page in statuses:
-            statuses[status_pep_page] += 1
-        if status_pep_page not in statuses:
-            statuses[status_pep_page] = 1
-        if status_pep_page not in EXPECTED_STATUS[status_abbr]:
-            error_message = (f'\nНесовпадающие статусы:\n'
-                             f'{url}\n'
-                             f'Статус в карточке: {status_pep_page}\n'
-                             f'Ожидаемые статусы: '
-                             f'{EXPECTED_STATUS[status_abbr]}')
-            logging.warning(error_message)
-    for status in statuses:
-        results.append((status, statuses[status]))
+
+        statuses[status_pep_page] = statuses.get(status_pep_page, 0) + 1
+
+        try:
+            if status_pep_page not in EXPECTED_STATUS[status_abbr]:
+                error_message = (f'\nНесовпадающие статусы:\n'
+                                 f'{url}\n'
+                                 f'Статус в карточке: {status_pep_page}\n'
+                                 f'Ожидаемые статусы: '
+                                 f'{EXPECTED_STATUS[status_abbr]}')
+                logging.warning(error_message)
+                raise KeyError('Статус не найден в ожидаемых статусах')
+        except KeyError as e:
+            print(f"Произошла ошибка: {e}")
+    results.extend(statuses.items())
     results.append(('Total', total_peps))
     return results
 
